@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# نظام البث المستمر 24/7 - حل انهيار M3U8 عبر MPEG-TS Pipe
+# نظام البث المستمر 24/7 - النسخة المحصنة ضد انهيارات FFmpeg و Streamlink
 # ==============================================================================
 
 KICK_CHANNEL="${KICK_CHANNEL:-TMNAA}"
@@ -78,6 +78,17 @@ Dialogue: 0,0:00:00.00,9:59:59.99,Subtitle,,0,0,0,,{\fad(600,600)}جاري ان�
 EOF
 }
 
+get_stream_url() {
+    local URL=""
+    URL=$(streamlink --http-header "User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url 2>/dev/null | grep -m1 "^http")
+    
+    if [ -z "$URL" ]; then
+        URL=$(yt-dlp -g "https://kick.com/$KICK_CHANNEL" 2>/dev/null | grep -m1 "^http")
+    fi
+    
+    echo "$URL"
+}
+
 start_standby_stream() {
     generate_initial_ass
     stop_stream
@@ -94,16 +105,15 @@ start_standby_stream() {
 }
 
 start_live_stream() {
+    local STREAM_URL="$1"
     stop_stream
-    echo "🔴 بدء إعادة بث القناة المباشرة عبر الأنبوب المستقر..."
+    echo "🔴 بدء إعادة بث القناة المباشرة بنجاح..."
     OUTPUTS=$(get_outputs)
     
-    streamlink --http-header "User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
-               --hls-live-edge 3 \
-               --stream-segment-threads 4 \
-               "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stdout 2>/dev/null | \
     ffmpeg -hide_banner -loglevel warning -nostdin \
-      -f mpegts -i pipe:0 \
+      -analyzeduration 10000000 -probesize 10000000 \
+      -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+      -i "$STREAM_URL" \
       -vf scale=1280:720 \
       -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 60 \
       -c:a aac -b:a 128k -ar 44100 \
@@ -112,10 +122,12 @@ start_live_stream() {
 }
 
 while true; do
-    if streamlink --http-header "User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url >/dev/null 2>&1; then
+    LIVE_URL=$(get_stream_url)
+
+    if [ -n "$LIVE_URL" ]; then
         if [ "$CURRENT_MODE" != "LIVE" ] || ! kill -0 "$STREAM_PID" 2>/dev/null; then
             echo "✅ الستريمر $STREAMER_NAME أونلاين! التبديل للبث المباشر..."
-            start_live_stream
+            start_live_stream "$LIVE_URL"
             CURRENT_MODE="LIVE"
         fi
     else
