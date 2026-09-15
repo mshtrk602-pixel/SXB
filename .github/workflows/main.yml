@@ -1,55 +1,43 @@
 name: 24/7 Master Broadcast
 
 on:
+  schedule:
+    # إعادة تشغيل العمل تلقائياً كل 5 ساعات لضمان عدم تجاوز حد مجانيات GitHub Actions
+    - cron: '0 */5 * * *'
   workflow_dispatch:
-    inputs:
-      kick_channel:
-        description: 'اسم قناة كيك (Kick Channel)'
-        required: true
-        default: 'TMNAA'
-      youtube_key:
-        description: 'مفتاح بث يوتيوب'
-        required: false
-        default: ''
-      restream_key:
-        description: 'مفتاح بث ريستريم'
-        required: false
-        default: 're_12215822_event12d2d60d5f814c68b3c0f0137cacab10'
-      destination:
-        description: 'وجهة البث (youtube, restream, both)'
-        required: true
-        default: 'restream'
-      quality:
-        description: 'جودة البث'
-        required: true
-        default: 'best'
-
-concurrency:
-  group: kick-broadcast
-  cancel-in-progress: true
 
 jobs:
-  broadcaster:
+  broadcast:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
-    steps:
-      - name: جلب ملفات المستودع
-        uses: actions/checkout@v3
 
-      - name: تثبيت FFmpeg و Streamlink و yt-dlp والخطوط
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies & Static FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg python3-pip fonts-noto-core fonts-sil-scheherazade fontconfig
-          sudo pip3 install --upgrade streamlink yt-dlp
-          sudo fc-cache -f -v
+          sudo apt-get install -y wget
+          pip install --upgrade streamlink
+          
+          # تحميل وتثبيت نسخة FFmpeg Static المعزولة لتجنب انهيار الذاكرة
+          wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+          tar -xvf ffmpeg-release-amd64-static.tar.xz
+          sudo mv ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ffmpeg
+          sudo mv ffmpeg-*-amd64-static/ffprobe /usr/local/bin/ffprobe
+          sudo chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
 
-      - name: تشغيل سكربت البث الشامل
+      - name: Run Broadcast Script
         env:
-          KICK_CHANNEL: ${{ github.event.inputs.kick_channel }}
-          YOUTUBE_KEY: ${{ github.event.inputs.youtube_key }}
-          RESTREAM_KEY: ${{ github.event.inputs.restream_key }}
-          STREAM_DEST: ${{ github.event.inputs.destination }}
-          STREAM_QUALITY: ${{ github.event.inputs.quality }}
+          RTMP_URL: ${{ secrets.RTMP_URL }}
+          RTMP_KEY: ${{ secrets.RTMP_KEY }}
+          CHANNEL_NAME: "TMNAA"
+          DESTINATION: "restream"
         run: |
           chmod +x stream.sh
           ./stream.sh
