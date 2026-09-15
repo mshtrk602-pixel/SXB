@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# نظام البث المستمر - حل مشكلة Exit 1 و Segfault باستخدام yt-dlp
+# نظام البث المستمر 24/7 - النسخة المستقرة لـ GitHub Actions
 # ==============================================================================
 
 KICK_CHANNEL="${KICK_CHANNEL:-TMNAA}"
@@ -81,11 +81,11 @@ EOF
 start_standby_stream() {
     generate_initial_ass
     stop_stream
-    echo "⏳ بدء بث شاشة الانتظار..."
+    echo "⏳ بدء بث شاشة الانتظار إلى الوجهة المحددة..."
     OUTPUTS=$(get_outputs)
     ffmpeg -hide_banner -loglevel warning -nostdin \
-      -re -f lavfi -i color=c=0x140024:s=1280x720:r=30 \
-      -f lavfi -i anullsrc=r=44100:cl=stereo -shortest \
+      -re -f lavfi -i color=c=0x140024:s=1280x720:r=30:d=86400 \
+      -f lavfi -i anullsrc=r=44100:cl=stereo:d=86400 \
       -vf "ass=/tmp/initial_standby.ass" \
       -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 60 \
       -c:a aac -b:a 128k -ar 44100 \
@@ -94,13 +94,12 @@ start_standby_stream() {
 }
 
 start_live_stream() {
+    local M3U8="$1"
     stop_stream
-    echo "🔴 بدء إعادة بث القناة باستعمال yt-dlp المستقر..."
+    echo "🔴 بدء إعادة بث القناة المباشرة إلى الوجهة المحددة..."
     OUTPUTS=$(get_outputs)
-    
-    yt-dlp --quiet --no-warnings -o - "https://kick.com/$KICK_CHANNEL" | \
     ffmpeg -hide_banner -loglevel warning -nostdin \
-      -i pipe:0 \
+      -fflags +genpts -i "$M3U8" \
       -vf scale=1280:720 \
       -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 60 \
       -c:a aac -b:a 128k -ar 44100 \
@@ -109,10 +108,12 @@ start_live_stream() {
 }
 
 while true; do
-    if yt-dlp -g "https://kick.com/$KICK_CHANNEL" >/dev/null 2>&1; then
+    KICK_M3U8=$(streamlink --hls-live-edge 3 --stream-segment-threads 4 "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url 2>/dev/null | grep -m1 "^http")
+
+    if [ -n "$KICK_M3U8" ]; then
         if [ "$CURRENT_MODE" != "LIVE" ] || ! kill -0 "$STREAM_PID" 2>/dev/null; then
             echo "✅ الستريمر $STREAMER_NAME أونلاين! التبديل للبث المباشر..."
-            start_live_stream
+            start_live_stream "$KICK_M3U8"
             CURRENT_MODE="LIVE"
         fi
     else
