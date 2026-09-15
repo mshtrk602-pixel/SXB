@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# نظام البث المستمر 24/7 - حل مشكلة Segfault عبر Streamlink Pipe Direct
+# نظام البث المستمر - حل مشكلة Exit 1 و Segfault باستخدام yt-dlp
 # ==============================================================================
 
 KICK_CHANNEL="${KICK_CHANNEL:-TMNAA}"
@@ -81,7 +81,7 @@ EOF
 start_standby_stream() {
     generate_initial_ass
     stop_stream
-    echo "⏳ بدء بث شاشة الانتظار إلى الوجهة المحددة..."
+    echo "⏳ بدء بث شاشة الانتظار..."
     OUTPUTS=$(get_outputs)
     ffmpeg -hide_banner -loglevel warning -nostdin \
       -re -f lavfi -i color=c=0x140024:s=1280x720:r=30 \
@@ -95,12 +95,12 @@ start_standby_stream() {
 
 start_live_stream() {
     stop_stream
-    echo "🔴 بدء إعادة بث القناة المباشرة وآمنة عبر Streamlink Pipe..."
+    echo "🔴 بدء إعادة بث القناة باستعمال yt-dlp المستقر..."
     OUTPUTS=$(get_outputs)
     
-    streamlink --hls-live-edge 3 --stream-segment-threads 4 "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stdout 2>/dev/null | \
+    yt-dlp --quiet --no-warnings -o - "https://kick.com/$KICK_CHANNEL" | \
     ffmpeg -hide_banner -loglevel warning -nostdin \
-      -fflags +genpts -i pipe:0 \
+      -i pipe:0 \
       -vf scale=1280:720 \
       -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 60 \
       -c:a aac -b:a 128k -ar 44100 \
@@ -109,7 +109,7 @@ start_live_stream() {
 }
 
 while true; do
-    if streamlink "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url >/dev/null 2>&1; then
+    if yt-dlp -g "https://kick.com/$KICK_CHANNEL" >/dev/null 2>&1; then
         if [ "$CURRENT_MODE" != "LIVE" ] || ! kill -0 "$STREAM_PID" 2>/dev/null; then
             echo "✅ الستريمر $STREAMER_NAME أونلاين! التبديل للبث المباشر..."
             start_live_stream
