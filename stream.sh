@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # ==============================================================================
-# نظام البث المستمر 24/7 - البث المباشر المباشر بدون أنابيب أو انهيارات
+# نظام البث المستمر 24/7 - حل مشكلة Segfault عبر Streamlink Pipe Direct
 # ==============================================================================
 
-KICK_CHANNEL="${KICK_CHANNEL:-OGABDULLAH}"
+KICK_CHANNEL="${KICK_CHANNEL:-TMNAA}"
 RESTREAM_KEY="${RESTREAM_KEY:-}"
 YOUTUBE_KEY="${YOUTUBE_KEY:-}"
 QUALITY="${STREAM_QUALITY:-best}"
@@ -94,12 +94,13 @@ start_standby_stream() {
 }
 
 start_live_stream() {
-    local M3U8="$1"
     stop_stream
-    echo "🔴 بدء إعادة بث القناة المباشرة إلى الوجهة المحددة..."
+    echo "🔴 بدء إعادة بث القناة المباشرة وآمنة عبر Streamlink Pipe..."
     OUTPUTS=$(get_outputs)
+    
+    streamlink --hls-live-edge 3 --stream-segment-threads 4 "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stdout 2>/dev/null | \
     ffmpeg -hide_banner -loglevel warning -nostdin \
-      -fflags +genpts -re -i "$M3U8" \
+      -fflags +genpts -i pipe:0 \
       -vf scale=1280:720 \
       -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 60 \
       -c:a aac -b:a 128k -ar 44100 \
@@ -108,12 +109,10 @@ start_live_stream() {
 }
 
 while true; do
-    KICK_M3U8=$(streamlink --hls-live-edge 3 --stream-segment-threads 4 "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url 2>/dev/null | grep -m1 "^http")
-
-    if [ -n "$KICK_M3U8" ]; then
+    if streamlink "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url >/dev/null 2>&1; then
         if [ "$CURRENT_MODE" != "LIVE" ] || ! kill -0 "$STREAM_PID" 2>/dev/null; then
             echo "✅ الستريمر $STREAMER_NAME أونلاين! التبديل للبث المباشر..."
-            start_live_stream "$KICK_M3U8"
+            start_live_stream
             CURRENT_MODE="LIVE"
         fi
     else
