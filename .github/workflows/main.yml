@@ -14,7 +14,7 @@ on:
       restream_key:
         description: 'مفتاح بث ريستريم'
         required: false
-        default: 're_12215822_event12d2d60d5f814c68b3c0f0137cacab10'
+        default: 're_12383410_event3359535a56d7404883516172dd9d2d9d'
       destination:
         description: 'وجهة البث (youtube, restream, both)'
         required: true
