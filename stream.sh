@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# نظام البث المستمر 24/7 - النسخة المستقرة لـ GitHub Actions
+# نظام البث المستمر 24/7 - حل انهيار M3U8 عبر MPEG-TS Pipe
 # ==============================================================================
 
 KICK_CHANNEL="${KICK_CHANNEL:-TMNAA}"
@@ -94,12 +94,16 @@ start_standby_stream() {
 }
 
 start_live_stream() {
-    local M3U8="$1"
     stop_stream
-    echo "🔴 بدء إعادة بث القناة المباشرة إلى الوجهة المحددة..."
+    echo "🔴 بدء إعادة بث القناة المباشرة عبر الأنبوب المستقر..."
     OUTPUTS=$(get_outputs)
+    
+    streamlink --http-header "User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
+               --hls-live-edge 3 \
+               --stream-segment-threads 4 \
+               "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stdout 2>/dev/null | \
     ffmpeg -hide_banner -loglevel warning -nostdin \
-      -fflags +genpts -i "$M3U8" \
+      -f mpegts -i pipe:0 \
       -vf scale=1280:720 \
       -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 60 \
       -c:a aac -b:a 128k -ar 44100 \
@@ -108,12 +112,10 @@ start_live_stream() {
 }
 
 while true; do
-    KICK_M3U8=$(streamlink --hls-live-edge 3 --stream-segment-threads 4 "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url 2>/dev/null | grep -m1 "^http")
-
-    if [ -n "$KICK_M3U8" ]; then
+    if streamlink --http-header "User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url >/dev/null 2>&1; then
         if [ "$CURRENT_MODE" != "LIVE" ] || ! kill -0 "$STREAM_PID" 2>/dev/null; then
             echo "✅ الستريمر $STREAMER_NAME أونلاين! التبديل للبث المباشر..."
-            start_live_stream "$KICK_M3U8"
+            start_live_stream
             CURRENT_MODE="LIVE"
         fi
     else
