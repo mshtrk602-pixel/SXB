@@ -1,0 +1,55 @@
+name: 24/7 Master Broadcast
+
+on:
+  workflow_dispatch:
+    inputs:
+      kick_channel:
+        description: 'اسم قناة كيك (Kick Channel)'
+        required: true
+        default: 'OSAMAH'
+      youtube_key:
+        description: 'مفتاح بث يوتيوب (تأكّد من إدخاله صح)'
+        required: false
+        default: ''
+      restream_key:
+        description: 'مفتاح بث ريستريم'
+        required: false
+        default: 're_12215822_event12d2d60d5f814c68b3c0f0137cacab10'
+      destination:
+        description: 'وجهة البث (youtube, restream, both)'
+        required: true
+        default: 'restream'
+      quality:
+        description: 'جودة البث'
+        required: true
+        default: 'best'
+
+concurrency:
+  group: kick-broadcast
+  cancel-in-progress: true
+
+jobs:
+  broadcaster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: جلب ملفات المستودع
+        uses: actions/checkout@v3
+
+      - name: تثبيت FFmpeg و Streamlink والخطوط
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-pip fonts-noto-core fonts-sil-scheherazade fontconfig
+          sudo pip3 install --upgrade streamlink
+          sudo fc-cache -f -v
+
+      - name: تشغيل سكربت البث الشامل
+        env:
+          KICK_CHANNEL: ${{ github.event.inputs.kick_channel }}
+          YOUTUBE_KEY: ${{ github.event.inputs.youtube_key }}
+          RESTREAM_KEY: ${{ github.event.inputs.restream_key }}
+          STREAM_DEST: ${{ github.event.inputs.destination }}
+          STREAM_QUALITY: ${{ github.event.inputs.quality }}
+        run: |
+          chmod +x stream.sh
+          ./stream.sh
