@@ -8,7 +8,7 @@ on:
         required: true
         default: 'TMNAA'
       youtube_key:
-        description: 'مفتاح بث يوتيوب (تأكّد من إدخاله صح)'
+        description: 'مفتاح بث يوتيوب'
         required: false
         default: ''
       restream_key:
@@ -36,11 +36,11 @@ jobs:
       - name: جلب ملفات المستودع
         uses: actions/checkout@v3
 
-      - name: تثبيت FFmpeg و Streamlink والخطوط
+      - name: تثبيت FFmpeg و Streamlink و yt-dlp والخطوط
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg python3-pip fonts-noto-core fonts-sil-scheherazade fontconfig
-          sudo pip3 install --upgrade streamlink
+          sudo pip3 install --upgrade streamlink yt-dlp
           sudo fc-cache -f -v
 
       - name: تشغيل سكربت البث الشامل
