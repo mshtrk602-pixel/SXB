@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# نظام البث المستمر 24/7 - البث المباشر المباشر بدون أنابيب أو انهيارات
+# نظام البث المستمر 24/7 - البث المباشر بأعلى جودة وسلاسة فريمات (1080p60)
 # ==============================================================================
 
 KICK_CHANNEL="${KICK_CHANNEL:-OGABDULLAH}"
@@ -62,14 +62,14 @@ generate_initial_ass() {
     cat <<EOF > /tmp/initial_standby.ass
 [Script Info]
 ScriptType: v4.00+
-PlayResX: 1280
-PlayResY: 720
+PlayResX: 1920
+PlayResY: 1080
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Title,$FONT_NAME,44,&H00FEB4D8,&H00000000,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,1,8,10,10,280,1
-Style: Subtitle,$FONT_NAME,32,&H00F755A8,&H00000000,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,1,8,10,10,360,1
+Style: Title,$FONT_NAME,60,&H00FEB4D8,&H00000000,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,1,8,10,10,420,1
+Style: Subtitle,$FONT_NAME,40,&H00F755A8,&H00000000,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,1,8,10,10,520,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -81,13 +81,13 @@ EOF
 start_standby_stream() {
     generate_initial_ass
     stop_stream
-    echo "⏳ بدء بث شاشة الانتظار إلى الوجهة المحددة..."
+    echo "⏳ بدء بث شاشة الانتظار إلى الوجهة المحددة (1080p60)..."
     OUTPUTS=$(get_outputs)
     ffmpeg -hide_banner -loglevel warning -nostdin \
-      -re -f lavfi -i color=c=0x140024:s=1280x720:r=30 \
+      -re -f lavfi -i color=c=0x140024:s=1920x1080:r=60 \
       -f lavfi -i anullsrc=r=44100:cl=stereo -shortest \
       -vf "ass=/tmp/initial_standby.ass" \
-      -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 60 \
+      -c:v libx264 -preset superfast -tune zerolatency -pix_fmt yuv420p -r 60 -g 120 -b:v 3500k \
       -c:a aac -b:a 128k -ar 44100 \
       $OUTPUTS >/dev/null 2>&1 &
     STREAM_PID=$!
@@ -96,13 +96,13 @@ start_standby_stream() {
 start_live_stream() {
     local M3U8="$1"
     stop_stream
-    echo "🔴 بدء إعادة بث القناة المباشرة إلى الوجهة المحددة..."
+    echo "🔴 بدء إعادة بث القناة المباشرة بأعلى جودة وسلاسة (1080p60)..."
     OUTPUTS=$(get_outputs)
     ffmpeg -hide_banner -loglevel warning -nostdin \
-      -fflags +genpts -re -i "$M3U8" \
-      -vf scale=1280:720 \
-      -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 60 \
-      -c:a aac -b:a 128k -ar 44100 \
+      -fflags +genpts -i "$M3U8" \
+      -c:v libx264 -preset superfast -tune zerolatency -pix_fmt yuv420p -r 60 -g 120 \
+      -b:v 6000k -maxrate 6000k -bufsize 12000k \
+      -c:a aac -b:a 160k -ar 44100 \
       $OUTPUTS >/dev/null 2>&1 &
     STREAM_PID=$!
 }
