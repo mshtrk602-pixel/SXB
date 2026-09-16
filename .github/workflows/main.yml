@@ -6,7 +6,7 @@ on:
       kick_channel:
         description: 'اسم قناة كيك (Kick Channel)'
         required: true
-        default: 'OSAMAH'
+        default: 'F1AISAL'
       youtube_key:
         description: 'مفتاح بث يوتيوب (تأكّد من إدخاله صح)'
         required: false
@@ -14,7 +14,7 @@ on:
       restream_key:
         description: 'مفتاح بث ريستريم'
         required: false
-        default: 're_12383410_event3359535a56d7404883516172dd9d2d9d'
+        default: 're_12215822_event2a18ddb6392048839be894a9394ce6d2'
       destination:
         description: 'وجهة البث (youtube, restream, both)'
         required: true
@@ -23,6 +23,9 @@ on:
         description: 'جودة البث'
         required: true
         default: 'best'
+  schedule:
+    # تشغيل تلقائي كل 5 ساعات لضمان استمرارية البث وتخطي حد الـ 6 ساعات
+    - cron: '0 */5 * * *'
 
 concurrency:
   group: kick-broadcast
@@ -45,11 +48,12 @@ jobs:
 
       - name: تشغيل سكربت البث الشامل
         env:
-          KICK_CHANNEL: ${{ github.event.inputs.kick_channel }}
-          YOUTUBE_KEY: ${{ github.event.inputs.youtube_key }}
-          RESTREAM_KEY: ${{ github.event.inputs.restream_key }}
-          STREAM_DEST: ${{ github.event.inputs.destination }}
-          STREAM_QUALITY: ${{ github.event.inputs.quality }}
+          # استخدام القيم الافتراضية في حال كان التشغيل التلقائي (Cron) هو من بدأ العملية
+          KICK_CHANNEL: ${{ github.event.inputs.kick_channel || 'OSAMAH' }}
+          YOUTUBE_KEY: ${{ github.event.inputs.youtube_key || '' }}
+          RESTREAM_KEY: ${{ github.event.inputs.restream_key || 're_12215822_event12d2d60d5f814c68b3c0f0137cacab10' }}
+          STREAM_DEST: ${{ github.event.inputs.destination || 'restream' }}
+          STREAM_QUALITY: ${{ github.event.inputs.quality || 'best' }}
         run: |
           chmod +x stream.sh
           ./stream.sh
