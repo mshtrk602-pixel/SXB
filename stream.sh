@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # ==============================================================================
-# نظام البث المستمر 24/7 - البث المباشر بأعلى جودة وسلاسة فريمات (1080p60)
+# نظام البث المستمر 24/7 - البث المباشر بأعلى جودة (بدون موسيقى)
 # ==============================================================================
 
-KICK_CHANNEL="${KICK_CHANNEL:-OGABDULLAH}"
+KICK_CHANNEL="${KICK_CHANNEL:-PEERLESS}"
 RESTREAM_KEY="${RESTREAM_KEY:-}"
 YOUTUBE_KEY="${YOUTUBE_KEY:-}"
 QUALITY="${STREAM_QUALITY:-best}"
@@ -81,15 +81,19 @@ EOF
 start_standby_stream() {
     generate_initial_ass
     stop_stream
+
     echo "⏳ بدء بث شاشة الانتظار إلى الوجهة المحددة (1080p60)..."
     OUTPUTS=$(get_outputs)
-    ffmpeg -hide_banner -loglevel warning -nostdin \
+
+    ffmpeg -hide_banner -loglevel error -nostdin \
       -re -f lavfi -i color=c=0x140024:s=1920x1080:r=60 \
-      -f lavfi -i anullsrc=r=44100:cl=stereo -shortest \
+      -f lavfi -i anullsrc=r=44100:cl=stereo \
+      -map 0:v:0 -map 1:a:0 \
       -vf "ass=/tmp/initial_standby.ass" \
       -c:v libx264 -preset superfast -tune zerolatency -pix_fmt yuv420p -r 60 -g 120 -b:v 3500k \
       -c:a aac -b:a 128k -ar 44100 \
-      $OUTPUTS >/dev/null 2>&1 &
+      -flvflags no_duration_filesize \
+      $OUTPUTS >/tmp/ffmpeg.log 2>&1 &
     STREAM_PID=$!
 }
 
@@ -98,12 +102,13 @@ start_live_stream() {
     stop_stream
     echo "🔴 بدء إعادة بث القناة المباشرة بأعلى جودة وسلاسة (1080p60)..."
     OUTPUTS=$(get_outputs)
-    ffmpeg -hide_banner -loglevel warning -nostdin \
+    ffmpeg -hide_banner -loglevel error -nostdin \
       -fflags +genpts -i "$M3U8" \
       -c:v libx264 -preset superfast -tune zerolatency -pix_fmt yuv420p -r 60 -g 120 \
       -b:v 6000k -maxrate 6000k -bufsize 12000k \
       -c:a aac -b:a 160k -ar 44100 \
-      $OUTPUTS >/dev/null 2>&1 &
+      -flvflags no_duration_filesize \
+      $OUTPUTS >/tmp/ffmpeg.log 2>&1 &
     STREAM_PID=$!
 }
 
@@ -112,12 +117,20 @@ while true; do
 
     if [ -n "$KICK_M3U8" ]; then
         if [ "$CURRENT_MODE" != "LIVE" ] || ! kill -0 "$STREAM_PID" 2>/dev/null; then
+            if [ -n "$STREAM_PID" ] && ! kill -0 "$STREAM_PID" 2>/dev/null; then
+                echo "⚠️ توقف البث المباشر السابق! تفاصيل الخطأ:"
+                [ -f /tmp/ffmpeg.log ] && tail -n 15 /tmp/ffmpeg.log
+            fi
             echo "✅ الستريمر $STREAMER_NAME أونلاين! التبديل للبث المباشر..."
             start_live_stream "$KICK_M3U8"
             CURRENT_MODE="LIVE"
         fi
     else
         if [ "$CURRENT_MODE" != "STANDBY" ] || ! kill -0 "$STREAM_PID" 2>/dev/null; then
+            if [ -n "$STREAM_PID" ] && ! kill -0 "$STREAM_PID" 2>/dev/null; then
+                echo "⚠️ توقف بث الانتظار السابق! تفاصيل الخطأ:"
+                [ -f /tmp/ffmpeg.log ] && tail -n 15 /tmp/ffmpeg.log
+            fi
             echo "⏳ الستريمر $STREAMER_NAME غير متصل.. عرض شاشة الانتظار..."
             start_standby_stream
             CURRENT_MODE="STANDBY"
