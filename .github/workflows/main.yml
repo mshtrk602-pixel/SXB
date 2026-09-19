@@ -6,7 +6,7 @@ on:
       kick_channel:
         description: 'اسم قناة كيك (Kick Channel)'
         required: true
-        default: 'imonkey_d'
+        default: 'S5B'
       youtube_key:
         description: 'مفتاح بث يوتيوب (تأكّد من إدخاله صح)'
         required: false
