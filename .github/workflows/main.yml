@@ -6,7 +6,7 @@ on:
       kick_channel:
         description: 'اسم قناة كيك (Kick Channel)'
         required: true
-        default: 'AbuSwe7l'
+        default: 'Imonky_d'
       youtube_key:
         description: 'مفتاح بث يوتيوب (تأكّد من إدخاله صح)'
         required: false
@@ -14,7 +14,7 @@ on:
       restream_key:
         description: 'مفتاح بث ريستريم'
         required: false
-        default: 're_12389500_eventbc60ad40fd184deea7c2ae0d5c6d196d'
+        default: 're_12389500_event63fe002873544965a75a3dd8d849f091'
       destination:
         description: 'وجهة البث (youtube, restream, both)'
         required: true
