@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # ==============================================================================
-# نظام البث المستمر 24/7 - البث المباشر بأعلى جودة (بدون موسيقى)
+# نظام البث المستمر 24/7 - البث المباشر بأعلى جودة (بدون انقطاع)
 # ==============================================================================
 
-KICK_CHANNEL="${KICK_CHANNEL:-PEERLESS}"
+KICK_CHANNEL="${KICK_CHANNEL:-}"
 RESTREAM_KEY="${RESTREAM_KEY:-}"
 YOUTUBE_KEY="${YOUTUBE_KEY:-}"
 QUALITY="${STREAM_QUALITY:-best}"
@@ -16,6 +16,7 @@ if [[ "$RESTREAM_KEY" == "X" || "$RESTREAM_KEY" == "x" ]]; then RESTREAM_KEY="";
 
 STREAMER_NAME=$(echo "$KICK_CHANNEL" | tr '[:lower:]' '[:upper:]')
 
+# تحديد الخط المناسب للعربية
 if fc-list : family | grep -qi "Noto Naskh Arabic"; then
     FONT_NAME="Noto Naskh Arabic"
 elif fc-list : family | grep -qi "Scheherazade"; then
@@ -102,7 +103,10 @@ start_live_stream() {
     stop_stream
     echo "🔴 بدء إعادة بث القناة المباشرة بأعلى جودة وسلاسة (1080p60)..."
     OUTPUTS=$(get_outputs)
+    
+    # إضافة خيارات Reconnect لتفادي أي انقطاع في الشبكة أثناء جلب بث Kick
     ffmpeg -hide_banner -loglevel error -nostdin \
+      -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
       -fflags +genpts -i "$M3U8" \
       -c:v libx264 -preset superfast -tune zerolatency -pix_fmt yuv420p -r 60 -g 120 \
       -b:v 6000k -maxrate 6000k -bufsize 12000k \
@@ -111,6 +115,9 @@ start_live_stream() {
       $OUTPUTS >/tmp/ffmpeg.log 2>&1 &
     STREAM_PID=$!
 }
+
+# مهلة قصيرة (2 ثانية) لمنح السيرفر الفرصة لتفريغ منفذ RTMP بعد إغلاق الجلسة القديمة
+sleep 2
 
 while true; do
     KICK_M3U8=$(streamlink --hls-live-edge 3 --stream-segment-threads 4 "https://kick.com/$KICK_CHANNEL" "$QUALITY" --stream-url 2>/dev/null | grep -m1 "^http")
