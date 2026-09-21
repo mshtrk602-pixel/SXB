@@ -6,7 +6,7 @@ on:
       kick_channel:
         description: 'اسم قناة كيك (Kick Channel)'
         required: true
-        default: 'DRB7H'
+        default: 'SXB'
       youtube_key:
         description: 'مفتاح بث يوتيوب'
         required: false
@@ -61,7 +61,7 @@ jobs:
 
       - name: تشغيل سكربت البث الشامل
         env:
-          KICK_CHANNEL: ${{ github.event.inputs.kick_channel || 'drb7h' }}
+          KICK_CHANNEL: ${{ github.event.inputs.kick_channel || 'SXB' }}
           YOUTUBE_KEY: ${{ github.event.inputs.youtube_key || '' }}
           RESTREAM_KEY: ${{ github.event.inputs.restream_key || 're_12389500_event63fe002873544965a75a3dd8d849f091' }}
           STREAM_DEST: ${{ github.event.inputs.destination || 'restream' }}
